@@ -1,4 +1,4 @@
-package de.lwerner.threads.threadsafequeue.de.lwerner.threads.threadsafequeue.visualization;
+package de.lwerner.threads.threadsafequeue.visualization;
 
 import de.lwerner.threads.threadsafequeue.QueueConsumer;
 import de.lwerner.threads.threadsafequeue.QueueProducer;
