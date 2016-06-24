@@ -6,8 +6,12 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
+ * Test of the NonBlockingQueue class
+ *
+ * @todo implement further tests
  *
  * @author Lukas Werner
+ * @author Toni Pohl
  */
 public class NonBlockingQueueTest {
 

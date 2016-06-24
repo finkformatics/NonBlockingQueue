@@ -7,9 +7,12 @@ import java.util.logging.Logger;
 /**
  * Thread-safe queue implementation with pre-defined length and to indexes (read and write).
  *
+ * @todo enqueue() and dequeue() are blocking each other (should be avoided)
+ *
  * @param <T> Type of queue elements
  *
  * @author Lukas Werner
+ * @author Toni Pohl
  */
 public class NonBlockingQueue<T> {
 
@@ -123,10 +126,21 @@ public class NonBlockingQueue<T> {
      * @return true, if writable
      */
     private synchronized boolean writable() {
-        boolean writable = writeIndex != readIndex;
-        writable = writable || fields.get(writeIndex) == null;
+        boolean writable = isEmpty(writeIndex);
         LOGGER.info("writable() returns " + writable + ".");
         return writable;
+    }
+
+    /**
+     * Checks if the value at the given index is empty
+     *
+     * @todo currently checks against null, should be done better, because you can add null to a queue
+     *
+     * @param index the index of the value to check
+     * @return true, if empty
+     */
+    private synchronized boolean isEmpty(int index) {
+        return fields.get(index) == null;
     }
 
     /**
