@@ -40,11 +40,11 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
 
     private void drawMarkers(Graphics g, int parentWidth, int parentHeight) {
         g.setColor(READ_INDEX_MARKER_COLOR);
-        int readMarkerX = 25 + (int)((readIndex + 1.5) * (parentWidth - 50) / 11) - 10;
+        int readMarkerX = 25 + (int)((getReadIndex() + 1.5) * (parentWidth - 50) / 11) - 10;
         int readMarkerY = parentHeight / 2 - 80;
         g.fillOval(readMarkerX, readMarkerY, 20, 20);
         g.setColor(WRITE_INDEX_MARKER_COLOR);
-        int writeMarkerX = 25 + (int)((writeIndex + 1.5) * (parentWidth - 50) / 11) - 10;
+        int writeMarkerX = 25 + (int)((getWriteIndex() + 1.5) * (parentWidth - 50) / 11) - 10;
         int writeMarkerY = parentHeight / 2 + 60;
         g.fillOval(writeMarkerX, writeMarkerY, 20, 20);
     }
@@ -57,7 +57,7 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         for (int i = 0; i < 10; i++) {
             int textX = (int)((i + 1.5) * (parentWidth - 50) / 11);
             g.drawString("" + i, textX, upperTextY);
-            g.drawString("" + fields.get(i), textX, lowerTextY);
+            g.drawString("" + getFieldContent(i), textX, lowerTextY);
         }
     }
 
