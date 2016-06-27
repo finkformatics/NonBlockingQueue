@@ -1,6 +1,7 @@
 package de.lwerner.threads.threadsafequeue;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -27,6 +28,9 @@ public class NonBlockingQueue<T> {
     private Lock enqueueLock = new ReentrantLock(); // ReentrantLock because the lock-holder can enter other methods locked with the same lock
     private Lock dequeueLock = new ReentrantLock();
 
+    private Condition enqueueCondition = enqueueLock.newCondition();
+    private Condition dequeueCondition = dequeueLock.newCondition();
+
     /**
      * Sets the size of the queue.
      *
@@ -49,6 +53,22 @@ public class NonBlockingQueue<T> {
      */
     public void enqueue(T element, boolean abortOnWait) {
         enqueueLock.lock();
+        try {
+            while(!writable()) {
+                enqueueCondition.await();
+            }
+
+            LOGGER.info(String.format("Enqueuing element %s at index %d.", element.toString(), writeIndex));
+            fields.set(writeIndex, new QueueField<>(element));
+            writeIndex = (writeIndex + 1) % size; // Thread-safe because only here it'll be updated
+
+            enqueueCondition.signalAll();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } finally {
+            enqueueLock.unlock();
+        }
+
         // TODO: Wait as long the queue isn't writable
         /*while (!writable()) {
             try {
@@ -60,11 +80,9 @@ public class NonBlockingQueue<T> {
                 LOGGER.log(Level.SEVERE, e.getMessage(), e);
             }
         }*/
-        LOGGER.info(String.format("Enqueuing element %s at index %d.", element.toString(), writeIndex));
-        fields.set(writeIndex, new QueueField<>(element));
-        writeIndex = (writeIndex + 1) % size; // Thread-safe because only here it'll be updated
+
         // notifyAll();
-        enqueueLock.unlock();
+        //enqueueLock.unlock();
     }
 
     /**
@@ -83,7 +101,27 @@ public class NonBlockingQueue<T> {
      * @return the fetched element
      */
     public T dequeue(boolean abortOnWait) {
+        T element = null;
         dequeueLock.lock();
+
+        try {
+            while (!readable()) {
+                dequeueCondition.await();
+            }
+
+            element = fields.get(readIndex).data;
+            fields.set(readIndex, QueueField.EMPTY);
+            LOGGER.info(String.format("Dequeuing element %s from index %d.", element.toString(), readIndex));
+            readIndex = (readIndex + 1) % size; // Thread-safe because only here it'll be updated
+
+            dequeueCondition.signalAll();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            dequeueLock.unlock();
+        }
+
+
         // TODO: Wait as long the queue isn't readable
         /*while (!readable()) {
             try {
@@ -95,12 +133,9 @@ public class NonBlockingQueue<T> {
                 LOGGER.log(Level.SEVERE, e.getMessage(), e);
             }
         }*/
-        T element = fields.get(readIndex).data;
-        fields.set(readIndex, QueueField.EMPTY);
-        LOGGER.info(String.format("Dequeuing element %s from index %d.", element.toString(), readIndex));
-        readIndex = (readIndex + 1) % size; // Thread-safe because only here it'll be updated
+
         // notifyAll();
-        dequeueLock.unlock();
+        //dequeueLock.unlock();
         return element;
     }
 
