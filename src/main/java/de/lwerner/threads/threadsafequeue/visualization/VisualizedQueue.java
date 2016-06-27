@@ -57,7 +57,8 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         for (int i = 0; i < 10; i++) {
             int textX = (int)((i + 1.5) * (parentWidth - 50) / 11);
             g.drawString("" + i, textX, upperTextY);
-            g.drawString("" + getFieldContent(i), textX, lowerTextY);
+            Integer content = getFieldContent(i);
+            g.drawString(content == null ? "[empty]" : "" + content, textX, lowerTextY);
         }
     }
 

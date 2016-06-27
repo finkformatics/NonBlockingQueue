@@ -19,7 +19,7 @@ public class NonBlockingQueue<T> {
     private static final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
     private final int size;
-    private final ArrayList<T> fields;
+    private final ArrayList<QueueField<T>> fields;
 
     private int readIndex;
     private int writeIndex;
@@ -37,7 +37,7 @@ public class NonBlockingQueue<T> {
         this.size = size;
         fields = new ArrayList<>(size);
         while (size-- > 0) {
-            fields.add(null);
+            fields.add(QueueField.EMPTY);
         }
     }
 
@@ -61,7 +61,7 @@ public class NonBlockingQueue<T> {
             }
         }*/
         LOGGER.info(String.format("Enqueuing element %s at index %d.", element.toString(), writeIndex));
-        fields.set(writeIndex, element);
+        fields.set(writeIndex, new QueueField<>(element));
         writeIndex = (writeIndex + 1) % size; // Thread-safe because only here it'll be updated
         // notifyAll();
         enqueueLock.unlock();
@@ -95,8 +95,8 @@ public class NonBlockingQueue<T> {
                 LOGGER.log(Level.SEVERE, e.getMessage(), e);
             }
         }*/
-        T element = fields.get(readIndex);
-        fields.set(readIndex, null);
+        T element = fields.get(readIndex).data;
+        fields.set(readIndex, QueueField.EMPTY);
         LOGGER.info(String.format("Dequeuing element %s from index %d.", element.toString(), readIndex));
         readIndex = (readIndex + 1) % size; // Thread-safe because only here it'll be updated
         // notifyAll();
@@ -146,15 +146,13 @@ public class NonBlockingQueue<T> {
     /**
      * Checks if the value at the given index is empty
      *
-     * @todo currently checks against null, should be done better, because you can add null to a queue
-     *
      * @param index the index of the value to check
      * @return true, if empty
      */
     private boolean isEmpty(int index) {
         enqueueLock.lock();
         dequeueLock.lock();
-        boolean ret = getFieldContent(index) == null;
+        boolean ret = fields.get(index).empty;
         enqueueLock.lock();
         dequeueLock.lock();
         return ret;
@@ -182,7 +180,7 @@ public class NonBlockingQueue<T> {
     protected T getFieldContent(int index) {
         enqueueLock.lock(); // TODO: Check if safe
         dequeueLock.lock();
-        T ret = fields.get(index);
+        T ret = fields.get(index).data;
         enqueueLock.unlock();
         dequeueLock.unlock();
         return ret;
@@ -210,5 +208,21 @@ public class NonBlockingQueue<T> {
         int ret = readIndex;
         dequeueLock.unlock();
         return ret;
+    }
+
+    private static class QueueField<T> {
+
+        static final QueueField EMPTY = new QueueField();
+
+        T data;
+        boolean empty;
+
+        QueueField() {
+            empty = true;
+        }
+
+        QueueField(T data) {
+            this.data = data;
+        }
     }
 }
