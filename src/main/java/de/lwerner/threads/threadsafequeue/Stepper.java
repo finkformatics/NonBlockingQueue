@@ -7,7 +7,12 @@ public abstract class Stepper {
 
     private List<StepListener> listeners = new ArrayList<>();
 
-    private Thread thread;
+    private String threadName;
+    protected Thread thread;
+
+    public Stepper(String threadName) {
+        this.threadName = threadName;
+    }
 
     public void addStepListener(StepListener listener) {
         listeners.add(listener);
@@ -34,7 +39,7 @@ public abstract class Stepper {
                         break;
                     }
                 }
-            });
+            }, threadName);
             thread.start();
         }
     }

@@ -41,6 +41,6 @@ class QueueCanvas extends JPanel {
 
         ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        queue.render(g);
+        //queue.render(g);
     }
 }

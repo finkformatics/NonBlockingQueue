@@ -22,7 +22,7 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         this.parent = parent;
     }
 
-    private void drawQueue(Graphics g, int parentWidth, int parentHeight) {
+   /* private void drawQueue(Graphics g, int parentWidth, int parentHeight) {
         g.setColor(LINE_COLOR);
 
         g.drawLine(25, parentHeight / 2 - 50, parentWidth - 25, parentHeight / 2 - 50);
@@ -75,5 +75,5 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         drawMarkers(g, parent.getWidth(), parent.getHeight());
         drawContents(g, parent.getWidth(), parent.getHeight());
     }
-
+*/
 }
