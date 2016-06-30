@@ -54,7 +54,7 @@ public class NonBlockingQueue<T> {
     public void enqueue(T element, boolean abortOnWait) {
         enqueueLock.lock();
         try {
-            while(!writable()) {
+            while (!writable()) {
                 enqueueCondition.await();
             }
 
@@ -62,27 +62,15 @@ public class NonBlockingQueue<T> {
             fields.set(writeIndex, new QueueField<>(element));
             writeIndex = (writeIndex + 1) % size; // Thread-safe because only here it'll be updated
 
+            dequeueLock.lock();
+            dequeueCondition.signalAll();
             enqueueCondition.signalAll();
         } catch (InterruptedException e) {
-          e.printStackTrace();
+            e.printStackTrace();
         } finally {
+            dequeueLock.unlock();
             enqueueLock.unlock();
         }
-
-        // TODO: Wait as long the queue isn't writable
-        /*while (!writable()) {
-            try {
-                if (abortOnWait) {
-                    return;
-                }
-                wait();
-            } catch (InterruptedException e) {
-                LOGGER.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }*/
-
-        // notifyAll();
-        //enqueueLock.unlock();
     }
 
     /**
@@ -121,21 +109,6 @@ public class NonBlockingQueue<T> {
             dequeueLock.unlock();
         }
 
-
-        // TODO: Wait as long the queue isn't readable
-        /*while (!readable()) {
-            try {
-                if (abortOnWait) {
-                    return null;
-                }
-                wait();
-            } catch (InterruptedException e) {
-                LOGGER.log(Level.SEVERE, e.getMessage(), e);
-            }
-        }*/
-
-        // notifyAll();
-        //dequeueLock.unlock();
         return element;
     }
 
@@ -156,10 +129,8 @@ public class NonBlockingQueue<T> {
      * @return true, if readable
      */
     private boolean readable() {
-        dequeueLock.lock();
         boolean readable = !isEmpty(readIndex);
         LOGGER.info("readable() returns " + readable + ".");
-        dequeueLock.unlock();
         return readable;
     }
 
@@ -171,25 +142,19 @@ public class NonBlockingQueue<T> {
      * @return true, if writable
      */
     private boolean writable() {
-        enqueueLock.lock();
         boolean writable = isEmpty(writeIndex);
         LOGGER.info("writable() returns " + writable + ".");
-        enqueueLock.unlock();
         return writable;
     }
 
     /**
      * Checks if the value at the given index is empty
-     *
+     *@todo add lock
      * @param index the index of the value to check
      * @return true, if empty
      */
     private boolean isEmpty(int index) {
-        enqueueLock.lock();
-        dequeueLock.lock();
         boolean ret = fields.get(index).empty;
-        enqueueLock.lock();
-        dequeueLock.lock();
         return ret;
     }
 
