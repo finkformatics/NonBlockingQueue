@@ -1,6 +1,7 @@
 package de.lwerner.threads.threadsafequeue;
 
 import java.util.ArrayList;
+import java.util.Queue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -17,19 +18,21 @@ import java.util.logging.Logger;
  */
 public class NonBlockingQueue<T> {
 
-    private static final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    protected static final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
-    private final int size;
-    private final ArrayList<QueueField<T>> fields;
+    protected final int size;
+    protected final ArrayList<QueueField<T>> fields;
 
-    private int readIndex;
-    private int writeIndex;
+    protected int readIndex;
+    protected int writeIndex;
 
-    private Lock enqueueLock = new ReentrantLock(); // ReentrantLock because the lock-holder can enter other methods locked with the same lock
-    private Lock dequeueLock = new ReentrantLock();
+    protected Lock fieldLock = new ReentrantLock();
 
-    private Condition enqueueCondition = enqueueLock.newCondition();
-    private Condition dequeueCondition = dequeueLock.newCondition();
+    protected Lock enqueueLock = new ReentrantLock(); // ReentrantLock because the lock-holder can enter other methods locked with the same lock
+    protected Lock dequeueLock = new ReentrantLock();
+
+    protected Condition enqueueCondition = enqueueLock.newCondition();
+    protected Condition dequeueCondition = dequeueLock.newCondition();
 
     /**
      * Sets the size of the queue.
@@ -41,7 +44,7 @@ public class NonBlockingQueue<T> {
         this.size = size;
         fields = new ArrayList<>(size);
         while (size-- > 0) {
-            fields.add(QueueField.EMPTY);
+            fields.add(new QueueField<>());
         }
     }
 
@@ -52,25 +55,27 @@ public class NonBlockingQueue<T> {
      * @param abortOnWait let the method return if wait would be called
      */
     public void enqueue(T element, boolean abortOnWait) {
-        enqueueLock.lock();
-        try {
-            while (!writable()) {
-                enqueueCondition.await();
+        fieldLock.lock();
+        QueueField<T> field = fields.get(writeIndex);
+        field.lock.lock();
+        fieldLock.unlock();
+        while (!field.empty) {
+            try {
+                if (abortOnWait) {
+                    field.lock.unlock();
+                    return;
+                }
+                field.enqueueCondition.await();
+            } catch (InterruptedException e) {
+                // field.lock.unlock();
             }
-
-            LOGGER.info(String.format("Enqueuing element %s at index %d.", element.toString(), writeIndex));
-            fields.set(writeIndex, new QueueField<>(element));
-            writeIndex = (writeIndex + 1) % size; // Thread-safe because only here it'll be updated
-
-            dequeueLock.lock();
-            dequeueCondition.signalAll();
-            enqueueCondition.signalAll();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            dequeueLock.unlock();
-            enqueueLock.unlock();
         }
+        field.data = element;
+        field.empty = false;
+        LOGGER.info("Enqueuing element " + element + " at index " + writeIndex);
+        writeIndex = (writeIndex + 1) % size;
+        field.dequeueCondition.signalAll();
+        field.lock.unlock();
     }
 
     /**
@@ -90,25 +95,28 @@ public class NonBlockingQueue<T> {
      */
     public T dequeue(boolean abortOnWait) {
         T element = null;
-        dequeueLock.lock();
-
-        try {
-            while (!readable()) {
-                dequeueCondition.await();
+        fieldLock.lock();
+        QueueField<T> field = fields.get(readIndex);
+        field.lock.lock();
+        fieldLock.unlock();
+        while (field.empty) {
+            try {
+                if (abortOnWait) {
+                    field.lock.unlock();
+                    return null;
+                }
+                field.dequeueCondition.await();
+            } catch (InterruptedException e) {
+                // field.lock.unlock();
             }
-
-            element = fields.get(readIndex).data;
-            fields.set(readIndex, QueueField.EMPTY);
-            LOGGER.info(String.format("Dequeuing element %s from index %d.", element.toString(), readIndex));
-            readIndex = (readIndex + 1) % size; // Thread-safe because only here it'll be updated
-
-            dequeueCondition.signalAll();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            dequeueLock.unlock();
         }
-
+        element = field.data;
+        field.data = null;
+        field.empty = true;
+        LOGGER.info("Dequeuing element " + element + " at index " + readIndex);
+        readIndex = (readIndex + 1) % size;
+        field.enqueueCondition.signalAll();
+        field.lock.unlock();
         return element;
     }
 
@@ -122,53 +130,12 @@ public class NonBlockingQueue<T> {
     }
 
     /**
-     * Checks if the queue is readable at the current read index
-     *
-     * The condition is fields[readIndex] != null
-     *
-     * @return true, if readable
-     */
-    private boolean readable() {
-        boolean readable = !isEmpty(readIndex);
-        LOGGER.info("readable() returns " + readable + ".");
-        return readable;
-    }
-
-    /**
-     * Checks if the queue is writable at the current write index
-     *
-     * The condition is fields[writeIndex] == null
-     *
-     * @return true, if writable
-     */
-    private boolean writable() {
-        boolean writable = isEmpty(writeIndex);
-        LOGGER.info("writable() returns " + writable + ".");
-        return writable;
-    }
-
-    /**
-     * Checks if the value at the given index is empty
-     *@todo add lock
-     * @param index the index of the value to check
-     * @return true, if empty
-     */
-    private boolean isEmpty(int index) {
-        boolean ret = fields.get(index).empty;
-        return ret;
-    }
-
-    /**
      * Helper method for testing purposes. Clears the fields and indexes.
      */
-    protected void clear() {
-        enqueueLock.lock();
-        dequeueLock.lock();
+    protected synchronized void clear() {
         readIndex = 0;
         writeIndex = 0;
         fields.clear();
-        enqueueLock.unlock();
-        dequeueLock.unlock();
     }
 
     /**
@@ -178,11 +145,9 @@ public class NonBlockingQueue<T> {
      * @return the contents of the field specified by the index
      */
     protected T getFieldContent(int index) {
-        enqueueLock.lock(); // TODO: Check if safe
-        dequeueLock.lock();
+        fieldLock.lock();
         T ret = fields.get(index).data;
-        enqueueLock.unlock();
-        dequeueLock.unlock();
+        fieldLock.unlock();
         return ret;
     }
 
@@ -192,10 +157,7 @@ public class NonBlockingQueue<T> {
      * @return current write index
      */
     protected int getWriteIndex() {
-        enqueueLock.lock();
-        int ret = writeIndex;
-        enqueueLock.unlock();
-        return ret;
+        return writeIndex;
     }
 
     /**
@@ -204,25 +166,19 @@ public class NonBlockingQueue<T> {
      * @return current read index
      */
     protected int getReadIndex() {
-        dequeueLock.lock();
-        int ret = readIndex;
-        dequeueLock.unlock();
-        return ret;
+        return readIndex;
     }
 
-    private static class QueueField<T> {
-
-        static final QueueField EMPTY = new QueueField();
+    protected static class QueueField<T> {
 
         T data;
         boolean empty;
+        ReentrantLock lock = new ReentrantLock();
+        Condition enqueueCondition = lock.newCondition();
+        Condition dequeueCondition = lock.newCondition();
 
         QueueField() {
             empty = true;
-        }
-
-        QueueField(T data) {
-            this.data = data;
         }
     }
 }

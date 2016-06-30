@@ -12,26 +12,38 @@ class QueueCanvas extends JPanel {
 
     private VisualizedQueue queue;
 
-    private QueueProducer producer;
-    private QueueConsumer consumer;
+    private QueueProducer producer1;
+    private QueueProducer producer2;
+    private QueueConsumer consumer1;
+    private QueueConsumer consumer2;
 
     QueueCanvas() {
         queue = new VisualizedQueue(this);
 
-        producer = new QueueProducer(queue);
-        producer.addStepListener(this::repaint);
-        consumer = new QueueConsumer(queue);
-        consumer.addStepListener(this::repaint);
+        producer1 = new QueueProducer(queue);
+        producer2 = new QueueProducer(queue);
+        producer1.addStepListener(this::repaint);
+        producer2.addStepListener(this::repaint);
+        consumer1 = new QueueConsumer(queue);
+        consumer2 = new QueueConsumer(queue);
+        consumer1.addStepListener(this::repaint);
+        consumer2.addStepListener(this::repaint);
 
         setPreferredSize(new Dimension(1000, 500));
     }
 
-    QueueProducer getProducer() {
-        return producer;
+    QueueProducer getProducer1() {
+        return producer1;
+    }
+    QueueProducer getProducer2() {
+        return producer2;
     }
 
-    QueueConsumer getConsumer() {
-        return consumer;
+    QueueConsumer getConsumer1() {
+        return consumer1;
+    }
+    QueueConsumer getConsumer2() {
+        return consumer2;
     }
 
     @Override

@@ -7,7 +7,13 @@ public abstract class Stepper {
 
     private List<StepListener> listeners = new ArrayList<>();
 
-    private Thread thread;
+    protected Thread thread;
+
+    private String threadName;
+
+    public Stepper(String threadName) {
+        this.threadName = threadName;
+    }
 
     public void addStepListener(StepListener listener) {
         listeners.add(listener);
@@ -19,22 +25,24 @@ public abstract class Stepper {
         }
     }
 
-    public void step() {
+    public abstract void step(boolean abortOnWait);
+
+    protected void step() {
         fireStepEvent();
     }
 
-    public void start(long sleepTime) {
+    public void start(long sleepTime, boolean abortOnWait) {
         if (thread == null || !thread.isAlive()) {
             thread = new Thread(() -> {
                 while (true) {
-                    step();
+                    step(abortOnWait);
                     try {
                         Thread.sleep(sleepTime);
                     } catch (InterruptedException e) {
                         break;
                     }
                 }
-            });
+            }, threadName);
             thread.start();
         }
     }

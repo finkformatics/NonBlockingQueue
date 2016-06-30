@@ -10,17 +10,29 @@ public class QueueProgram {
 
     public static void main(String[] args) {
         NonBlockingQueue<Integer> queue = new NonBlockingQueue<>(QUEUE_SIZE);
-        QueueProducer producer = new QueueProducer(queue);
-        QueueConsumer consumer = new QueueConsumer(queue);
-        producer.start(0);
-        consumer.start(0);
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        QueueProducer[] producers = new QueueProducer[5];
+        QueueConsumer[] consumers = new QueueConsumer[5];
+        for (int i = 0; i < consumers.length; i++) {
+            consumers[i] = new QueueConsumer(queue);
+            long sleepTime = (long)(Math.random() * 400);
+            consumers[i].start(sleepTime, false);
         }
-        producer.stop();
-        consumer.stop();
+        for (int i = 0; i < producers.length; i++) {
+            producers[i] = new QueueProducer(queue);
+            long sleepTime = (long)(Math.random() * 400);
+            producers[i].start(sleepTime, false);
+        }
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) { }
+        System.out.println("Stop the bastards");
+        for (int i = 0; i < producers.length; i++) {
+            producers[i].stop();
+        }
+        for (int i = 0; i < consumers.length; i++) {
+            consumers[i].stop();
+        }
+        System.out.println("Stopped");
     }
 
 }

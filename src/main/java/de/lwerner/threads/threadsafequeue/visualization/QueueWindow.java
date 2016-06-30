@@ -35,11 +35,13 @@ public class QueueWindow extends JFrame {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 btProducerStep.setEnabled(false);
                 btProducerRun.setText("Producer running...");
-                canvas.getProducer().start(producerSleepTime);
+                canvas.getProducer1().start(producerSleepTime, true);
+                canvas.getProducer2().start(producerSleepTime, true);
             } else if (e.getStateChange() == ItemEvent.DESELECTED) {
                 btProducerStep.setEnabled(true);
                 btProducerRun.setText("Run Producer");
-                canvas.getProducer().stop();
+                canvas.getProducer1().stop();
+                canvas.getProducer2().stop();
             }
         });
         tfProducerSleepTime = new JTextField("1000");
@@ -61,7 +63,11 @@ public class QueueWindow extends JFrame {
         btProducerStep = new JButton("Producer step");
         btProducerStep.setFocusPainted(false);
         btProducerStep.addActionListener(e -> {
-            canvas.getProducer().step();
+            if (Math.random() < 0.5) {
+                canvas.getProducer1().step(true);
+            } else {
+                canvas.getProducer2().step(true);
+            }
         });
         btConsumerRun = new JToggleButton("Run Consumer");
         btConsumerRun.setFocusPainted(false);
@@ -69,11 +75,13 @@ public class QueueWindow extends JFrame {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 btConsumerStep.setEnabled(false);
                 btConsumerRun.setText("Consumer running...");
-                canvas.getConsumer().start(consumerSleepTime);
+                canvas.getConsumer1().start(consumerSleepTime, true);
+                canvas.getConsumer2().start(consumerSleepTime, true);
             } else if (e.getStateChange() == ItemEvent.DESELECTED) {
                 btConsumerStep.setEnabled(true);
                 btConsumerRun.setText("Run Consumer");
-                canvas.getConsumer().stop();
+                canvas.getConsumer1().stop();
+                canvas.getConsumer2().stop();
             }
         });
         tfConsumerSleepTime = new JTextField("1000");
@@ -96,7 +104,11 @@ public class QueueWindow extends JFrame {
         btConsumerStep = new JButton("Consumer step");
         btConsumerStep.setFocusPainted(false);
         btConsumerStep.addActionListener(e -> {
-            canvas.getConsumer().step();
+            if (Math.random() < 0.5) {
+                canvas.getConsumer1().step(true);
+            } else {
+                canvas.getConsumer2().step(true);
+            }
         });
         toolbarPane.add(new JLabel("Producer sleep time:"));
         toolbarPane.add(tfProducerSleepTime);
