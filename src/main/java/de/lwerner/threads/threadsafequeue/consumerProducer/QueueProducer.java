@@ -16,6 +16,11 @@ public class QueueProducer extends Stepper {
 
     @Override
     public void step() {
+        if (Math.random() < 0.05) {
+            try {
+                Thread.sleep((long)(Math.random() * 1500));
+            } catch (InterruptedException e) { }
+        }
         queue.enqueue(++counter, true);
         super.step();
     }
