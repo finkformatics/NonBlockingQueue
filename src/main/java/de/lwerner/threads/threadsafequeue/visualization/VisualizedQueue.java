@@ -22,7 +22,7 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         this.parent = parent;
     }
 
-   /* private void drawQueue(Graphics g, int parentWidth, int parentHeight) {
+    private void drawQueue(Graphics g, int parentWidth, int parentHeight) {
         g.setColor(LINE_COLOR);
 
         g.drawLine(25, parentHeight / 2 - 50, parentWidth - 25, parentHeight / 2 - 50);
@@ -55,10 +55,10 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         int upperTextY = parentHeight / 2 - 18;
         int lowerTextY = parentHeight / 2 + 32;
         for (int i = 0; i < 10; i++) {
-            int textX = (int)((i + 1.5) * (parentWidth - 50) / 11);
+            int textX = (int)((i + 1.5) * (parentWidth - 50) / 11 - 10);
             g.drawString("" + i, textX, upperTextY);
-            Integer content = getFieldContent(i);
-            g.drawString(content == null ? "[empty]" : "" + content, textX, lowerTextY);
+            QueueField<Integer> field = getField(i);
+            g.drawString(field.empty() ? "[empty]" : "" + field.data(), textX, lowerTextY);
         }
     }
 
@@ -75,5 +75,5 @@ class VisualizedQueue extends NonBlockingQueue<Integer> {
         drawMarkers(g, parent.getWidth(), parent.getHeight());
         drawContents(g, parent.getWidth(), parent.getHeight());
     }
-*/
+
 }

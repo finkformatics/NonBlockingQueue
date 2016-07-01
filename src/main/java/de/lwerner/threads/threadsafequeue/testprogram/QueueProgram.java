@@ -1,4 +1,8 @@
-package de.lwerner.threads.threadsafequeue;
+package de.lwerner.threads.threadsafequeue.testprogram;
+
+import de.lwerner.threads.threadsafequeue.NonBlockingQueue;
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueConsumer;
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueProducer;
 
 /**
  *
@@ -14,13 +18,13 @@ public class QueueProgram {
         QueueConsumer consumer[] = new QueueConsumer[5];
 
         for (int i = 0; i < 5; i++) {
-            int sleep = (int) (Math.random() * 4000);
+            int sleep = (int) (Math.random() * 400);
             consumer[i] = new QueueConsumer(queue);
             consumer[i].start(sleep);
         }
 
         for (int i = 0; i < 5; i++) {
-            int sleep = (int) (Math.random() * 4000);
+            int sleep = (int) (Math.random() * 400);
             producer[i] = new QueueProducer(queue);
             producer[i].start(sleep);
         }

@@ -11,4 +11,4 @@ Furthermore care has to be taken that you cannot enqueue if the value at the cur
 readIndex is empty. This makes sure, but cas has also to be taken that the readIndex cannot pass the writeIndex and vice versa.
 
 ## Install
-Simple import this Maven project into your favorite IDE and start either de.lwerner.threads.threadsafequeue.QueueProgram or de.lwerner.threads.threadsafequeue.visualization.QueueWindow.
+Simple import this Maven project into your favorite IDE and start either de.lwerner.threads.threadsafequeue.testprogram.QueueProgram or de.lwerner.threads.threadsafequeue.visualization.QueueWindow.

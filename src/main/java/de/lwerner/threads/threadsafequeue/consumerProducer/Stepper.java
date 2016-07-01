@@ -1,4 +1,4 @@
-package de.lwerner.threads.threadsafequeue;
+package de.lwerner.threads.threadsafequeue.consumerProducer;
 
 import java.util.ArrayList;
 import java.util.List;

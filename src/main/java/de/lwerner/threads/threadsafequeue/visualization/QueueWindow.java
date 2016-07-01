@@ -1,5 +1,8 @@
 package de.lwerner.threads.threadsafequeue.visualization;
 
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueConsumer;
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueProducer;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemEvent;
@@ -20,12 +23,12 @@ public class QueueWindow extends JFrame {
     private long producerSleepTime = 1000;
     private long consumerSleepTime = 1000;
 
-    private QueueWindow() {
+    private QueueWindow(int numberOfConsumersProducers) {
         super("Feinkörnige Warteschlangen");
 
         JPanel contentPane = new JPanel(new BorderLayout());
 
-        canvas = new QueueCanvas();
+        canvas = new QueueCanvas(numberOfConsumersProducers);
         contentPane.add(canvas, BorderLayout.CENTER);
 
         JPanel toolbarPane = new JPanel();
@@ -35,11 +38,15 @@ public class QueueWindow extends JFrame {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 btProducerStep.setEnabled(false);
                 btProducerRun.setText("Producer running...");
-                canvas.getProducer().start(producerSleepTime);
+                for (QueueProducer producer: canvas.getProducers()) {
+                    producer.start(producerSleepTime);
+                }
             } else if (e.getStateChange() == ItemEvent.DESELECTED) {
                 btProducerStep.setEnabled(true);
                 btProducerRun.setText("Run Producer");
-                canvas.getProducer().stop();
+                for (QueueProducer producer: canvas.getProducers()) {
+                    producer.stop();
+                }
             }
         });
         tfProducerSleepTime = new JTextField("1000");
@@ -61,7 +68,8 @@ public class QueueWindow extends JFrame {
         btProducerStep = new JButton("Producer step");
         btProducerStep.setFocusPainted(false);
         btProducerStep.addActionListener(e -> {
-            canvas.getProducer().step();
+            int index = (int)(Math.random() * canvas.getProducers().length);
+            canvas.getProducers()[index].step();
         });
         btConsumerRun = new JToggleButton("Run Consumer");
         btConsumerRun.setFocusPainted(false);
@@ -69,11 +77,15 @@ public class QueueWindow extends JFrame {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 btConsumerStep.setEnabled(false);
                 btConsumerRun.setText("Consumer running...");
-                canvas.getConsumer().start(consumerSleepTime);
+                for (QueueConsumer consumer: canvas.getConsumers()) {
+                    consumer.start(consumerSleepTime);
+                }
             } else if (e.getStateChange() == ItemEvent.DESELECTED) {
                 btConsumerStep.setEnabled(true);
                 btConsumerRun.setText("Run Consumer");
-                canvas.getConsumer().stop();
+                for (QueueConsumer consumer: canvas.getConsumers()) {
+                    consumer.stop();
+                }
             }
         });
         tfConsumerSleepTime = new JTextField("1000");
@@ -85,7 +97,6 @@ public class QueueWindow extends JFrame {
                         long sleepTime = Long.parseLong(tfConsumerSleepTime.getText());
                         if (sleepTime > 0) {
                             consumerSleepTime = sleepTime;
-                            System.out.println("Consumer sleep time: " + consumerSleepTime);
                         } else {
                             tfConsumerSleepTime.setText("" + consumerSleepTime);
                         }
@@ -96,7 +107,8 @@ public class QueueWindow extends JFrame {
         btConsumerStep = new JButton("Consumer step");
         btConsumerStep.setFocusPainted(false);
         btConsumerStep.addActionListener(e -> {
-            canvas.getConsumer().step();
+            int index = (int)(Math.random() * canvas.getConsumers().length);
+            canvas.getConsumers()[index].step();
         });
         toolbarPane.add(new JLabel("Producer sleep time:"));
         toolbarPane.add(tfProducerSleepTime);
@@ -116,13 +128,14 @@ public class QueueWindow extends JFrame {
     }
 
     public static void main(String[] args) {
+        int numberOfConsumersProducers = args.length > 0 ? Integer.parseInt(args[0]) : 2;
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | InstantiationException | UnsupportedLookAndFeelException | IllegalAccessException e) {
             e.printStackTrace();
         }
         SwingUtilities.invokeLater(() -> {
-            new QueueWindow().setVisible(true);
+            new QueueWindow(numberOfConsumersProducers).setVisible(true);
         });
     }
 

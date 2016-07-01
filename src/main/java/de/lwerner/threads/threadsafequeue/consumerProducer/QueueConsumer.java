@@ -1,6 +1,6 @@
-package de.lwerner.threads.threadsafequeue;
+package de.lwerner.threads.threadsafequeue.consumerProducer;
 
-import java.util.logging.Logger;
+import de.lwerner.threads.threadsafequeue.NonBlockingQueue;
 
 public class QueueConsumer extends Stepper {
 
@@ -15,7 +15,7 @@ public class QueueConsumer extends Stepper {
 
     @Override
     public void step() {
-        queue.dequeue(true, thread.getName());
+        queue.dequeue(true);
         super.step();
     }
 

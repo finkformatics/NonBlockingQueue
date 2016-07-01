@@ -1,7 +1,7 @@
 package de.lwerner.threads.threadsafequeue.visualization;
 
-import de.lwerner.threads.threadsafequeue.QueueConsumer;
-import de.lwerner.threads.threadsafequeue.QueueProducer;
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueConsumer;
+import de.lwerner.threads.threadsafequeue.consumerProducer.QueueProducer;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,26 +12,31 @@ class QueueCanvas extends JPanel {
 
     private VisualizedQueue queue;
 
-    private QueueProducer producer;
-    private QueueConsumer consumer;
+    private QueueProducer[] producers;
+    private QueueConsumer[] consumers;
 
-    QueueCanvas() {
+    QueueCanvas(int numberOfConsumersProducers) {
         queue = new VisualizedQueue(this);
 
-        producer = new QueueProducer(queue);
-        producer.addStepListener(this::repaint);
-        consumer = new QueueConsumer(queue);
-        consumer.addStepListener(this::repaint);
+        producers = new QueueProducer[numberOfConsumersProducers];
+        consumers = new QueueConsumer[numberOfConsumersProducers];
+
+        for (int i = 0; i < numberOfConsumersProducers; i++) {
+            producers[i] = new QueueProducer(queue);
+            producers[i].addStepListener(this::repaint);
+            consumers[i] = new QueueConsumer(queue);
+            consumers[i].addStepListener(this::repaint);
+        }
 
         setPreferredSize(new Dimension(1000, 500));
     }
 
-    QueueProducer getProducer() {
-        return producer;
+    QueueProducer[] getProducers() {
+        return producers;
     }
 
-    QueueConsumer getConsumer() {
-        return consumer;
+    QueueConsumer[] getConsumers() {
+        return consumers;
     }
 
     @Override
@@ -41,6 +46,6 @@ class QueueCanvas extends JPanel {
 
         ((Graphics2D)g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        //queue.render(g);
+        queue.render(g);
     }
 }

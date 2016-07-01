@@ -1,12 +1,8 @@
 package de.lwerner.threads.threadsafequeue;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -19,17 +15,29 @@ import java.util.logging.Logger;
  */
 public class NonBlockingQueue<T> {
 
+    /**
+     * The logger object
+     */
     private static final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 
+    /**
+     * The size of this queue
+     */
     private final int size;
 
+    /**
+     * The write index
+     */
     private Index writeIndex;
+    /**
+     * The read index
+     */
     private Index readIndex;
 
+    /**
+     * The fields (actual queue)
+     */
     private final ArrayList<QueueField<T>> queue = new ArrayList<>();
-    private ReentrantLock fieldLock = new ReentrantLock();
-    private Condition fieldCondition = fieldLock.newCondition();
-
 
     /**
      * Sets the size of the queue.
@@ -48,21 +56,57 @@ public class NonBlockingQueue<T> {
     }
 
     /**
+     * Get the size of this queue
+     *
+     * @return size
+     */
+    public int getSize() {
+        return size;
+    }
+
+    /**
+     * Get the read index (thread-safe)
+     *
+     * @return read index
+     */
+    public int getReadIndex() {
+        readIndex.lock();
+        int index = readIndex.index;
+        readIndex.unlock();
+        return index;
+    }
+
+    /**
+     * Get the write index (thread-safe)
+     *
+     * @return write index
+     */
+    public int getWriteIndex() {
+        writeIndex.lock();
+        int index = writeIndex.index;
+        writeIndex.unlock();
+        return index;
+    }
+
+    /**
      * Enqueues a new element to the current read index
      *
      * @param element element the element to enqueue
      * @param abortOnWait let the method return if wait would be called
      */
-    public void enqueue(T element, boolean abortOnWait, String threadName) {
-        int index = writeIndex.get();
-        //fieldLock.lock();
-        QueueField<T> field = queue.get(index);
-        field.lock.lock();
-        //fieldLock.unlock();
+    public void enqueue(T element, boolean abortOnWait) {
+        writeIndex.lock();
+        QueueField<T> field = queue.get(writeIndex.get());
+        field.lock();
 
-        while (! (field.empty)) {
+        while (!(field.empty)) {
             try {
-                field.condition.await();
+                if (abortOnWait) {
+                    field.unlock();
+                    writeIndex.unlock();
+                    return;
+                }
+                field.await();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -70,10 +114,11 @@ public class NonBlockingQueue<T> {
 
         field.data = element;
         field.empty = false;
-        LOGGER.info(threadName + ": Enqueue element " + element + " at index " + index);
-        field.condition.signalAll();
-        field.lock.unlock();
+        LOGGER.info(Thread.currentThread().getName() + ": Enqueue element " + element + " at index " + writeIndex.get());
+        field.signalAll();
+        field.unlock();
         writeIndex.inc();
+        writeIndex.unlock();
     }
 
     /**
@@ -81,8 +126,8 @@ public class NonBlockingQueue<T> {
      *
      * @param element the element to enqueue
      */
-    public void enqueue(T element, String threadName) {
-        enqueue(element, false, threadName);
+    public void enqueue(T element) {
+        enqueue(element, false);
     }
 
     /**
@@ -91,16 +136,19 @@ public class NonBlockingQueue<T> {
      * @param abortOnWait let the method return if wait would be called
      * @return the fetched element
      */
-    public T dequeue(boolean abortOnWait, String threadName) {
-        int index = readIndex.get();
-        //fieldLock.lock();
-        QueueField<T> field = queue.get(index);
-        field.lock.lock();
-        //fieldLock.unlock();
+    public T dequeue(boolean abortOnWait) {
+        readIndex.lock();
+        QueueField<T> field = queue.get(readIndex.get());
+        field.lock();
 
         while (field.empty) {
             try {
-                field.condition.await();
+                if (abortOnWait) {
+                    readIndex.unlock();
+                    field.unlock();
+                    return null;
+                }
+                field.await();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -108,12 +156,22 @@ public class NonBlockingQueue<T> {
 
         T data = field.data;
         field.empty = true;
-        LOGGER.info(threadName + ": Dequeue element " + data + " at index " + index);
-        field.condition.signalAll();
-        field.lock.unlock();
+        LOGGER.info(Thread.currentThread().getName() + ": Dequeue element " + data + " at index " + readIndex.get());
+        field.signalAll();
+        field.unlock();
         readIndex.inc();
-
+        readIndex.unlock();
         return data;
+    }
+
+    /**
+     * Get the field at given index.
+     *
+     * @param index given index
+     * @return the field to fetch
+     */
+    public QueueField<T> getField(int index) {
+        return queue.get(index).clone();
     }
 
     /**
@@ -121,34 +179,157 @@ public class NonBlockingQueue<T> {
      *
      * @return the fetched element
      */
-    public T dequeue(String threadName) {
-        return dequeue(false, threadName);
+    public T dequeue() {
+        return dequeue(false);
     }
 
+    /**
+     * QueueField class to represent an entry in the queue
+     *
+     * @param <T> the type of the QueueField.
+     *
+     * @author Lukas Werner
+     * @author Toni Pohl
+     */
+    protected class QueueField<T> {
 
-    private class QueueField<T> {
+        /**
+         * Physical field data
+         */
         T data;
+        /**
+         * Indicator if this field is empty (allows null values)
+         */
         boolean empty = true;
+        /**
+         * The lock of this field
+         */
         ReentrantLock lock = new ReentrantLock();
+        /**
+         * The condition of the field's lock
+         */
         Condition condition = lock.newCondition();
+
+        /**
+         * Wrapper-method for condition.await()
+         *
+         * @throws InterruptedException if condition.await() throws it
+         */
+        void await() throws InterruptedException {
+            condition.await();
+        }
+
+        /**
+         * Wrapper-method for condition.signalAll()
+         */
+        void signalAll() {
+            condition.signalAll();
+        }
+
+        /**
+         * Lock this
+         */
+        void lock() {
+            lock.lock();
+        }
+
+        /**
+         * Unlock this
+         */
+        void unlock() {
+            lock.unlock();
+        }
+
+        /**
+         * Is this field empty?
+         *
+         * @return true, if empty
+         */
+        public boolean empty() {
+            return empty;
+        }
+
+        /**
+         * Get the physical data
+         *
+         * @return physical data
+         */
+        public T data() {
+            return data;
+        }
+
+        /**
+         * Clone this object
+         *
+         * @return clone
+         */
+        public QueueField<T> clone() {
+            lock();
+            QueueField<T> f = new QueueField<>();
+            f.empty = empty;
+            f.data = data;
+            unlock();
+            return f;
+        }
     }
 
+    /**
+     * Index class to take care of concurrency
+     *
+     * @Author Toni Pohl
+     * @Author Lukas Werner
+     */
     private class Index {
-        private int index = 0;
-        private int max;
-        private ReentrantLock lock = new ReentrantLock();
 
-        public Index(int max) {
+        /**
+         * The physical index
+         */
+        int index = 0;
+        /**
+         * Max value to role (via modulo)
+         */
+        int max;
+        /**
+         * The lock for this index
+         */
+        ReentrantLock lock = new ReentrantLock();
+
+        /**
+         * Sets the maximum index (practically the maximum index - 1)
+         *
+         * @param max the maximum index (modulo)
+         */
+        Index(int max) {
             this.max = max;
         }
 
-        public int get() {
-            lock.lock();
+        /**
+         * Get the physical index
+         *
+         * @return the physical index
+         */
+        int get() {
             return index;
         }
 
-        public void inc() {
+        /**
+         * Increment index
+         */
+        void inc() {
             index = (index + 1) % max;
+        }
+
+        /**
+         * Lock this index
+         */
+        void lock() {
+            lock.lock();
+        }
+
+        /**
+         * Unlock this index
+         */
+        void unlock() {
             lock.unlock();
         }
     }
